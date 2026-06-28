@@ -368,12 +368,16 @@ def generate_pharmacy_invoice():
     pdf.output(path)
     print(f"Generated: {path}")
 
-if __name__ == "__main__":
-    print("Generating sample claim documents for ClaimIQ demo...")
+def generate_all_samples():
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     generate_hospital_bill()
     generate_discharge_summary()
     generate_prescription()
     generate_lab_report()
     generate_insurance_form()
     generate_pharmacy_invoice()
+
+if __name__ == "__main__":
+    print("Generating sample claim documents for ClaimIQ demo...")
+    generate_all_samples()
     print("\nAll 6 realistic demo PDFs generated successfully in 'sample_data/output/'.")
