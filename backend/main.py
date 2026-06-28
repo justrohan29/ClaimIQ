@@ -69,15 +69,6 @@ async def stream_audit_progress(claim_id: str):
     """SSE Endpoint yielding real-time processing stages and final audit report."""
     async def event_generator():
         if claim_id not in audit_results:
-            if claim_id.startswith("demo-") and os.path.exists(SAMPLE_DIR):
-                saved = [{"filename": fn, "path": os.path.join(SAMPLE_DIR, fn)} for fn in sorted(os.listdir(SAMPLE_DIR)) if fn.endswith(".pdf")]
-                if saved: audit_results[claim_id] = {"files": saved, "status": "ready"}
-            elif os.path.exists(os.path.join(UPLOAD_DIR, claim_id)):
-                folder = os.path.join(UPLOAD_DIR, claim_id)
-                saved = [{"filename": fn, "path": os.path.join(folder, fn)} for fn in sorted(os.listdir(folder)) if fn.endswith(".pdf")]
-                if saved: audit_results[claim_id] = {"files": saved, "status": "ready"}
-
-        if claim_id not in audit_results:
             yield {"event": "error", "data": json.dumps({"message": "Invalid claim ID"})}
             return
 

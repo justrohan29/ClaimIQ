@@ -1,9 +1,29 @@
 import os
 import traceback
 
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
+_docling_converter = None
+
+def get_docling_converter():
+    global _docling_converter
+    if _docling_converter is None:
+        from docling.document_converter import DocumentConverter, PdfFormatOption
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        
+        pipeline_options = PdfPipelineOptions()
+        pipeline_options.do_ocr = False
+        pipeline_options.do_table_structure = False
+        
+        _docling_converter = DocumentConverter(
+            format_options={"pdf": PdfFormatOption(pipeline_options=pipeline_options)}
+        )
+    return _docling_converter
+
 def extract_text_from_pdf(pdf_path: str) -> dict:
     """
-    Extract text and markdown from PDF using Docling, with pdfplumber fallback.
+    Extract text and markdown from PDF using lightweight Docling (no heavy AI vision models).
     Returns:
         {
             "text": str,
@@ -15,30 +35,8 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
     if not os.path.exists(pdf_path):
         return {"text": "", "markdown": "", "success": False, "method": "none", "error": "File not found"}
 
-    # 1. Primary Low-RAM extraction via pdfplumber (~15MB RAM)
     try:
-        import pdfplumber
-        text_pages = []
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                t = page.extract_text()
-                if t:
-                    text_pages.append(t)
-        full_text = "\n\n".join(text_pages)
-        if len(full_text.strip()) > 50:
-            return {
-                "text": full_text,
-                "markdown": full_text,
-                "success": True,
-                "method": "pdfplumber"
-            }
-    except Exception as e:
-        print(f"pdfplumber extraction failed for {pdf_path}: {e}")
-
-    # 2. Heavy Deep-Learning Fallback via Docling (~600MB RAM)
-    try:
-        from docling.document_converter import DocumentConverter
-        converter = DocumentConverter()
+        converter = get_docling_converter()
         result = converter.convert(pdf_path)
         markdown = result.document.export_to_markdown()
         text = markdown.replace("#", "").replace("|", " ").replace("---", "")
@@ -49,10 +47,8 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
             "method": "docling"
         }
     except Exception as e:
-        print(f"Docling OCR failed for {pdf_path}: {e}")
-    except Exception as e:
         err = traceback.format_exc()
-        print(f"pdfplumber also failed for {pdf_path}: {err}")
+        print(f"Docling OCR failed for {pdf_path}: {err}")
         return {
             "text": "",
             "markdown": "",
