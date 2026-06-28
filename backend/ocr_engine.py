@@ -15,24 +15,7 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
     if not os.path.exists(pdf_path):
         return {"text": "", "markdown": "", "success": False, "method": "none", "error": "File not found"}
 
-    # Try Docling first
-    try:
-        from docling.document_converter import DocumentConverter
-        converter = DocumentConverter()
-        result = converter.convert(pdf_path)
-        markdown = result.document.export_to_markdown()
-        # For plain text, we can just use the markdown or strip basic markdown chars
-        text = markdown.replace("#", "").replace("|", " ").replace("---", "")
-        return {
-            "text": text,
-            "markdown": markdown,
-            "success": True,
-            "method": "docling"
-        }
-    except Exception as e:
-        print(f"Docling OCR failed for {pdf_path}: {e}. Falling back to pdfplumber...")
-
-    # Fallback to pdfplumber
+    # 1. Primary Low-RAM extraction via pdfplumber (~15MB RAM)
     try:
         import pdfplumber
         text_pages = []
@@ -42,12 +25,31 @@ def extract_text_from_pdf(pdf_path: str) -> dict:
                 if t:
                     text_pages.append(t)
         full_text = "\n\n".join(text_pages)
+        if len(full_text.strip()) > 50:
+            return {
+                "text": full_text,
+                "markdown": full_text,
+                "success": True,
+                "method": "pdfplumber"
+            }
+    except Exception as e:
+        print(f"pdfplumber extraction failed for {pdf_path}: {e}")
+
+    # 2. Heavy Deep-Learning Fallback via Docling (~600MB RAM)
+    try:
+        from docling.document_converter import DocumentConverter
+        converter = DocumentConverter()
+        result = converter.convert(pdf_path)
+        markdown = result.document.export_to_markdown()
+        text = markdown.replace("#", "").replace("|", " ").replace("---", "")
         return {
-            "text": full_text,
-            "markdown": full_text,
+            "text": text,
+            "markdown": markdown,
             "success": True,
-            "method": "pdfplumber"
+            "method": "docling"
         }
+    except Exception as e:
+        print(f"Docling OCR failed for {pdf_path}: {e}")
     except Exception as e:
         err = traceback.format_exc()
         print(f"pdfplumber also failed for {pdf_path}: {err}")
