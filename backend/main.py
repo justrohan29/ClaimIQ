@@ -53,17 +53,8 @@ async def prepare_demo_packet():
     """Load the 6 generated demo PDFs from sample_data/output/."""
     claim_id = "demo-" + str(uuid.uuid4())[:8]
     
-    os.makedirs(SAMPLE_DIR, exist_ok=True)
-    if not any(fn.endswith(".pdf") for fn in os.listdir(SAMPLE_DIR)):
-        try:
-            import sys
-            root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-            if root_dir not in sys.path:
-                sys.path.append(root_dir)
-            from sample_data.generate_samples import generate_all_samples
-            generate_all_samples()
-        except Exception as e:
-            return {"error": f"Failed to generate demo samples: {str(e)}"}
+    if not os.path.exists(SAMPLE_DIR):
+        return {"error": "Sample data folder not found on server."}
         
     saved_files = []
     for fn in sorted(os.listdir(SAMPLE_DIR)):
